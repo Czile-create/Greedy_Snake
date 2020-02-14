@@ -42,9 +42,14 @@ class set {
         int speed;
         set()
         {
-            n=30;
-            m=58;
-            speed=150;
+            n=30,m=58,speed=100;
+            ExistLongestTime=0;
+            LargestScore=0;
+            LongestSnake=0;
+            NearestTime=NearestScore=NearestSnake=0;
+            Hitwall=0;
+            TimeLimitedPoint=0;
+            TimeLimitedPointUpdateGap=10000;
         }
         void readSetting(); //从文件中读取设置
         void changeSetting();   //更改设置
@@ -57,20 +62,18 @@ class set {
         int Verify;                 //验证码(判断设置文件是否被修改)
         double NearestTime,NearestScore;    //最近一次的时间与分数
         int NearestSnake;           //最近一次的蛇长
+        int Hitwall;               //允许撞墙
+        int TimeLimitedPoint;       //限时的点
+        int TimeLimitedPointUpdateGap;      //限时点更新间隔
 } Setting;
 
 void set::readSetting()
 {
-    FILE * fp=fopen("Greedy_Snake.set","r");
+    FILE * fp=fopen("Greedy_Snake_v3.set","r");
     if (fp!=NULL) {
-        fscanf(fp,"%d%d%d%lf%lf%d%d%lf%lf%d",&n,&m,&speed,&ExistLongestTime,&LargestScore,&LongestSnake,&Verify,&NearestTime,&NearestScore,&NearestSnake);
-        if (!(int(n+m+speed+ExistLongestTime+LargestScore+LongestSnake+NearestTime+NearestScore+NearestSnake)%127==Verify)) {
-            n=30,m=30,speed=150;
-            ExistLongestTime=0;
-            LargestScore=0;
-            LongestSnake=0;
-            NearestTime=NearestScore=NearestSnake=0;
-        }
+        fscanf(fp,"%d%d%d%lf%lf%d%d%lf%lf%d%d%d%d",&n,&m,&speed,&ExistLongestTime,&LargestScore,&LongestSnake,&Verify,&NearestTime,&NearestScore,&NearestSnake,&Hitwall,&TimeLimitedPoint,&TimeLimitedPointUpdateGap);
+        if (!(int(n+m+speed+ExistLongestTime+LargestScore+LongestSnake+NearestTime+NearestScore+NearestSnake+Hitwall+TimeLimitedPoint+TimeLimitedPointUpdateGap)%127==Verify))
+            *this=set();
     }
     fclose(fp);
 }
@@ -87,9 +90,9 @@ void set::showHonor()
 
 void set::saveSetting()
 {
-    Verify=int(n+m+speed+ExistLongestTime+LargestScore+LongestSnake+NearestTime+NearestScore+NearestSnake)%127;
-    FILE * fp=fopen("Greedy_Snake.set","w+");
-    fprintf(fp, "%d %d %d %lf %lf %d %d %lf %lf %d",n,m,speed,ExistLongestTime,LargestScore,LongestSnake,Verify,NearestTime,NearestScore,NearestSnake);
+    Verify=int(n+m+speed+ExistLongestTime+LargestScore+LongestSnake+NearestTime+NearestScore+NearestSnake+Hitwall+TimeLimitedPoint+TimeLimitedPointUpdateGap)%127;
+    FILE * fp=fopen("Greedy_Snake_v3.set","w+");
+    fprintf(fp, "%d %d %d %lf %lf %d %d %lf %lf %d %d %d %d",n,m,speed,ExistLongestTime,LargestScore,LongestSnake,Verify,NearestTime,NearestScore,NearestSnake,Hitwall,TimeLimitedPoint,TimeLimitedPointUpdateGap);
     fclose(fp);
 }
 
@@ -97,12 +100,24 @@ void set::showSetting()
 {
     cout<<"Here are the Setting: \n";
     cout<<">\tNumber of row: "<<n<<"\n>\tNumber of column: "<<m<<'\n';
-    cout<<">\tUpdate Gap: "<<speed<<"ms\n\n>";
+    cout<<">\tUpdate Gap: "<<speed<<"ms\n";
+    cout<<">\tAllow hitting the wall: ";
+    if (Hitwall)
+        cout<<"True\n";
+    else
+        cout<<"False\n";
+    cout<<">\tAllow Time Limited Food: ";
+    if (TimeLimitedPoint)
+        cout<<"True\n";
+    else
+        cout<<"False\n\n>";
+    if (TimeLimitedPoint)
+        cout<<">\tFood Update Gap: "<<TimeLimitedPointUpdateGap<<"s\n\n>";
 }
 
 void set::changeSetting()
 {
-    cout<<"Please enter 'row', 'column', 'Update_Gap' or 'back' to continue..\n\n>";
+    cout<<"Please enter 'row', 'column', 'UpdateGap', 'AllowHitWall',\n'AllowTimeLimitedFood', 'FoodUpdateGap'\n or 'save'to continue..\n\n>";
     string s;
     int temp;
 sign1:
@@ -138,7 +153,43 @@ sign1:
         cout<<"\n>";
         goto sign1;
     }
-    else if (s=="back")
+    else if (s=="AllowHitWall") {
+        string t;
+        do {
+            cout<<"Please enter 'True' or 'False' to continue...\n\n>";
+            cin>>t;
+            if (t=="True")
+                Hitwall=1;
+            else if (t=="False")
+                Hitwall=0;
+        } while (t!="True"&&t!="False");
+        cout<<"\n>";
+        goto sign1;
+    }
+    else if (s=="AllowTimeLimitedFood") {
+        string t;
+        do {
+            cout<<"Please enter 'True' or 'False' to continue...\n\n>";
+            cin>>t;
+            if (t=="True")
+                TimeLimitedPoint=1;
+            else if (t=="False")
+                TimeLimitedPoint=0;
+        } while (t!="True"&&t!="False");
+        cout<<"\n>";
+        goto sign1;
+    }
+    else if (TimeLimitedPoint&&s=="FoodUpdateGap") {
+        do {
+            cout<<"Please enter food update gap (ms), it must be a number from 5000 to 20000..\n\n>";
+            cin>>temp;
+            if (temp>=5000&&temp<=20000)
+                TimeLimitedPointUpdateGap=temp;
+        } while (temp<5000 || temp>20000);
+        cout<<"\n>";
+        goto sign1;
+    }
+    else if (s=="save")
         return;
     else {
         cout<<"No such command! Please try again! \n\n>";
@@ -189,6 +240,10 @@ void map::init(set Setting)
 
 void map::updateFood()
 {
+    if (s[food.x][food.y]=='$') {
+        s[food.x][food.y]=' ';
+        removeSth(food.y+1,food.x+1);
+    }
     do {
         food.x=random(n);
         food.y=random(m);
@@ -222,6 +277,12 @@ bool map::move(char ch)
     else if (ch==down)
         temp.x++;
     //移动，获取新蛇头坐标
+    if (Setting.Hitwall) {
+        temp.x+=n;
+        temp.x%=n;
+        temp.y+=m;
+        temp.y%=m;
+    }
     if (temp.x==food.x&&temp.y==food.y) {
         s[tail.x][tail.y]='*';
         s[temp.x][temp.y]='o';
@@ -275,7 +336,10 @@ void map::printFailed(double score)
     cout<<"************************************************************\n\n";
     cout<<"                          Game Over                         \n\n";
     cout<<"************************************************************\n\n";
-    cout<<">\tYour score is: "<<score<<"\n>\tThe length of snake is: "<<snake.size()<<"\n>\tPress any key to exit...\n\n";
+    cout<<">\tExist Longest Time: "<<Setting.ExistLongestTime<<"s";
+    cout<<"\n>\tLargest Score: "<<Setting.LargestScore;
+    cout<<"\n>\tLongest Snake: "<<Setting.LongestSnake;
+    cout<<"\n\n>\tYour score is: "<<score<<"\n>\tThe length of snake is: "<<snake.size()<<"\n>\tPress any key to exit...\n\n";
     cout<<"************************************************************\n\n>";
     CONSOLE_CURSOR_INFO cursor_info = {1, 1};
     SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursor_info);    //还原光标
@@ -301,7 +365,19 @@ void updatePosition(char & ch)
         this_thread::sleep_for(chrono::milliseconds(Setting.speed));
     }
 }
-
+void UpdateFood()
+{
+    if (!Setting.TimeLimitedPoint)
+        return;
+    while (m.live) {
+        m.mtx.lock();
+        m.updateFood();
+        m.mtx.unlock();
+        if (!m.live)
+            break;
+        this_thread::sleep_for(chrono::milliseconds(Setting.TimeLimitedPointUpdateGap));
+    }
+}
 
 void start()
 {
@@ -312,6 +388,7 @@ void start()
     char temp;          //记录输入当前方向，用来判断输入冲突
     m.print();          //画出初始地图
     thread automove(updatePosition,ref(ch));    //自动更新
+    thread autoupdatefood(UpdateFood);          //自动更新食物
     while (m.live) {
         if ((_getch())==224) {
             temp=_getch();
@@ -338,10 +415,11 @@ void start()
             _getch();
         }
     }
-    automove.join();
     end=clock();
+    autoupdatefood.detach();
+    automove.join();
     double time=double(end-start)/CLOCKS_PER_SEC;       //计算时间
-    double score=100000000*m.snake.size()/Setting.n/Setting.m/Setting.speed/time;
+    double score=100000000*(m.snake.size()-1)/Setting.n/Setting.m/Setting.speed/time;
     //计算分数
     if (time>Setting.ExistLongestTime)
         Setting.ExistLongestTime=time;
@@ -390,7 +468,7 @@ sign:
         goto sign2;
     }
     else if (s=="about") {
-        cout<<"\tGreedy Snake v2.0.0\n\tCopyright (c) 2020 Purelight.Chan Zee Lok.\n";
+        cout<<"\tGreedy Snake v3.0.0\n\tCopyright (c) 2020 Purelight.Chan Zee Lok.\n";
         cout<<"\tGithub: https://github.com/Czile-create\n";
         cout<<"\tEmail: Czile@foxmail.com\n\n>";
         goto sign;
