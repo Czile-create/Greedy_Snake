@@ -143,7 +143,7 @@ sign1:
         cout<<"\n>";
         goto sign1;
     }
-    else if (s=="Update_Gap") {
+    else if (s=="UpdateGap") {
         do {
             cout<<"Please enter new Update Gap (ms) , it must be a number from 50 to 2000..\n\n>";
             cin>>temp;
